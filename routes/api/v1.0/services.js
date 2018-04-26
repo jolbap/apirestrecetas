@@ -1,5 +1,6 @@
 var express = require('express');
 var router = express.Router();
+var _ = require("underscore");
 var Comida = require("../../../database/collections/comida");
 
 /*----------------RECETAS---------------*/
@@ -25,4 +26,88 @@ router.post("/comida", (req, res) => {
     });
   });
 });
+
+// muestra todas las recetas
+router.get("/comida", (req, res, next) => {
+  Comida.find({}).exec( (error, docs) => {
+    res.status(200).json(docs);
+  })
+});
+
+// lee solo una receta
+router.get(/comida\/[a-z0-9]{1,}$/, (req, res) => {
+  var url = req.url;
+  var id = url.split("/")[2];
+  Comida.findOne({_id : id}).exec( (error, docs) => {
+    if (docs != null) {
+        res.status(200).json(docs);
+        return;
+    }
+    res.status(200).json({
+      "msn" : "No existe el recurso "
+    });
+  })
+});
+
+//elimina recetas
+router.delete(/comida\/[a-z0-9]{1,}$/, (req, res) => {
+  var url = req.url;
+  var id = url.split("/")[2];
+  Comida.find({_id : id}).remove().exec( (err, docs) => {
+      res.status(200).json(docs);
+  });
+});
+
+//actualiza todos los datos de la receta
+router.put(/comida\/[a-z0-9]{1,}$/, (req, res) => {
+  var url = req.url;
+  var id = url.split("/")[2];
+  var keys  = Object.keys(req.body);
+  var oficialkeys = ['name', 'descripcion', 'ingredients'];
+  var result = _.difference(oficialkeys, keys);
+  if (result.length > 0) {
+    res.status(400).json({
+      "msn" : "no cambio todos los datos de la receta"
+    });
+    return;
+  }
+  var comida = {
+    name : req.body.name,
+    descripcion : req.body.descripcion,
+    ingredients : req.body.ingredients
+  };
+  Comida.findOneAndUpdate({_id: id}, comida, (err, params) => {
+      if(err) {
+        res.status(500).json({
+          "msn": "Error no se pudo actualizar los datos"
+        });
+        return;
+      }
+      res.status(200).json(params);
+      return;
+  });
+});
+
+//actualiza algunos datos de la receta
+router.patch(/comida\/[a-z0-9]{1,}$/, (req, res) => {
+  var url = req.url;
+  var id = url.split("/")[2];
+  var keys = Object.keys(req.body);
+  var comida = {};
+  for (var i = 0; i < keys.length; i++) {
+    comida[keys[i]] = req.body[keys[i]];
+  }
+  Comida.findOneAndUpdate({_id: id}, comida, (err, params) => {
+      if(err) {
+        res.status(500).json({
+          "msn": "Error no se pudo actualizar los datos"
+        });
+        return;
+      }
+      res.status(200).json(params);
+      return;
+  });
+});
+
+
 module.exports = router;
